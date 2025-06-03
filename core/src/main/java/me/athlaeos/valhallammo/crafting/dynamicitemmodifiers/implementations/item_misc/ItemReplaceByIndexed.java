@@ -2,6 +2,7 @@ package me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.implementations.it
 
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierCategoryRegistry;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ResultChangingModifier;
 import me.athlaeos.valhallammo.dom.Pair;
 import me.athlaeos.valhallammo.item.CustomItem;
@@ -24,16 +25,16 @@ public class ItemReplaceByIndexed extends DynamicItemModifier implements ResultC
     }
 
     @Override
-    public void processItem(Player crafter, ItemBuilder outputItem, boolean use, boolean validate, int timesExecuted) {
-        ItemStack customItem = CustomItemRegistry.getProcessedItem(item, crafter);
+    public void processItem(ModifierContext context) {
+        ItemStack customItem = CustomItemRegistry.getProcessedItem(item, context.getCrafter());
         if (ItemUtils.isEmpty(customItem)) return;
-        outputItem.setItem(customItem);
-        outputItem.setMeta(ItemUtils.getItemMeta(customItem));
+        context.getItem().setItem(customItem);
+        context.getItem().setMeta(ItemUtils.getItemMeta(customItem));
     }
 
     @Override
-    public ItemStack getNewResult(Player crafter, ItemBuilder i) {
-        return item == null ? null : CustomItemRegistry.getProcessedItem(item, crafter);
+    public ItemStack getNewResult(ModifierContext context) {
+        return item == null ? null : CustomItemRegistry.getProcessedItem(item, context.getCrafter());
     }
 
     @Override
@@ -97,7 +98,7 @@ public class ItemReplaceByIndexed extends DynamicItemModifier implements ResultC
 
     @Override
     public String parseCommand(CommandSender executor, String[] args) {
-        if (args.length < 3) return "One argument is expected: the name of the item";
+        if (args.length < 1) return "One argument is expected: the name of the item";
         item = args[0];
         return null;
     }

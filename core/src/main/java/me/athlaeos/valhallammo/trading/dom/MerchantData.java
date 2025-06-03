@@ -11,10 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class MerchantData {
     private static final Gson gson = new GsonBuilder().registerTypeHierarchyAdapter(ConfigurationSerializable.class, new ItemStackGSONAdapter()).create();
@@ -31,6 +28,8 @@ public class MerchantData {
     private final Map<String, TradeData> trades = new HashMap<>();
     private final Map<UUID, MerchantPlayerMemory> playerMemory = new HashMap<>(); // Tracks the amount of times a player traded with a villager. Partially used to determine if a player is a frequent customer or not.
     private int exp = 0;
+    private final Map<String, Float> merchantStats = new HashMap<>(); // TODO implement a bunch of merchant stats when the investing service becomes available
+    private final Map<UUID, OrderData> pendingOrders = new HashMap<>();
 
     public MerchantData(AbstractVillager villager, MerchantType type, TradeData... data){
         this.villagerUUID = villager == null ? null : villager.getUniqueId();
@@ -71,6 +70,11 @@ public class MerchantData {
         if (villagerUUID == null) return null;
         return ValhallaMMO.getInstance().getServer().getEntity(villagerUUID) instanceof AbstractVillager a ? a : null;
     }
+    public Map<String, Float> getMerchantStats() { return merchantStats; }
+    public void setMerchantStat(String stat, float value){ merchantStats.put(stat, value); }
+    public void addToMerchantStat(String stat, float value) { merchantStats.put(stat, getMerchantStat(stat) + value); }
+    public float getMerchantStat(String stat) { return merchantStats.getOrDefault(stat, 0F); }
+    public Map<UUID, OrderData> getPendingOrders() { return pendingOrders; }
 
     public static MerchantData deserialize(String data){
         return gson.fromJson(data, MerchantData.class);
@@ -83,11 +87,11 @@ public class MerchantData {
     public static class TradeData{
         private final String trade;
         private final int level;
-        private final ItemStack item;
+        private ItemStack item;
         private final int maxUses;
         private double remainingUses;
         private int demand = 0;
-        private Map<UUID, Double> perPlayerRemainingUses = new HashMap<>();
+        private final Map<UUID, Double> perPlayerRemainingUses = new HashMap<>();
         private final int basePrice;
         private long lastRestocked = -1;
         private long lastTraded = -1;
@@ -126,6 +130,7 @@ public class MerchantData {
         }
         public void setLastRestocked(long lastRestocked) { this.lastRestocked = lastRestocked; }
         public void setLastTraded(long lastTraded) { this.lastTraded = lastTraded; }
+        public void setItem(ItemStack item) { this.item = item; }
     }
 
     public static class MerchantPlayerMemory{
@@ -133,7 +138,9 @@ public class MerchantData {
         private long lastTimeTraded = 0;
         private float tradingReputation;
         private float renownReputation;
+        private long timeGiftable = 0;
         private final Map<String, Double> perPlayerTradesLeft = new HashMap<>();
+        private final Collection<String> singleTimeGiftedTrades = new HashSet<>();
 
         public int getTimesTraded() { return timesTraded; }
         public float getRenownReputation() { return renownReputation; }
@@ -144,5 +151,39 @@ public class MerchantData {
         public void setTimesTraded(int timesTraded) { this.timesTraded = timesTraded; }
         public void setRenownReputation(float renownReputation) { this.renownReputation = Math.max(renownMin, Math.min(renownMax, renownReputation)); }
         public void setTradingReputation(float tradingReputation) { this.tradingReputation = Math.max(reputationMin, Math.min(reputationMax, tradingReputation)); }
+        public Collection<String> getSingleTimeGiftedTrades() { return singleTimeGiftedTrades; }
+
+        public boolean isGiftable(String trade){
+            MerchantTrade t = CustomMerchantManager.getTrade(trade);
+            if (t == null) return false;
+            if (t.getGiftWeight() < 0) return !singleTimeGiftedTrades.contains(trade);
+            else return t.getGiftWeight() > 0 && timeGiftable < CustomMerchantManager.time();
+        }
+
+        public void setCooldown(String trade, long cooldown){
+            MerchantTrade t = CustomMerchantManager.getTrade(trade);
+            if (t == null) return;
+            if (t.getGiftWeight() < 0) singleTimeGiftedTrades.add(trade);
+            timeGiftable = CustomMerchantManager.time() + cooldown;
+        }
+    }
+
+    public static class OrderData{
+        private final Map<String, Integer> order;
+        private final long deliveredAt;
+
+        public OrderData(long deliveryTime, Map<String, Integer> order){
+            this.order = order;
+            this.deliveredAt = CustomMerchantManager.time() + deliveryTime;
+        }
+
+        public long getDeliveredAt() { return deliveredAt; }
+        public Map<String, Integer> getOrder() { return order; }
+        public boolean shouldReceive(){
+            return deliveredAt <= CustomMerchantManager.time();
+        }
+        public long getRemainingTime(){
+            return deliveredAt - CustomMerchantManager.time();
+        }
     }
 }

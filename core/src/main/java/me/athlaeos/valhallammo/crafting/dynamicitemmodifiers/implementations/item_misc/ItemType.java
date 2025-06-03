@@ -2,6 +2,7 @@ package me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.implementations.it
 
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierCategoryRegistry;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ResultChangingModifier;
 import me.athlaeos.valhallammo.dom.Pair;
 import me.athlaeos.valhallammo.item.ItemBuilder;
@@ -25,14 +26,14 @@ public class ItemType extends DynamicItemModifier implements ResultChangingModif
     }
 
     @Override
-    public void processItem(Player crafter, ItemBuilder outputItem, boolean use, boolean validate, int timesExecuted) {
-        outputItem.type(material);
-        PotionEffectRegistry.updateItemName(outputItem.getMeta(), true, false);
+    public void processItem(ModifierContext context) {
+        context.getItem().type(material);
+        PotionEffectRegistry.updateItemName(context.getItem().getMeta(), true, false);
     }
 
     @Override
-    public ItemStack getNewResult(Player crafter, ItemBuilder item) {
-        return item.copy().type(material).get();
+    public ItemStack getNewResult(ModifierContext context) {
+        return context.getItem().copy().type(material).get();
     }
 
     @Override

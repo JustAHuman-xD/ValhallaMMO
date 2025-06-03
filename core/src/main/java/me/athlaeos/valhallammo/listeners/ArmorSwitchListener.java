@@ -36,9 +36,9 @@ public class ArmorSwitchListener implements Listener {
         taskLimiters.put(who.getUniqueId(), update);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryEquip(InventoryClickEvent e){
-        if (e.isCancelled() || e.getClickedInventory() == null) return;
+        if (e.getClickedInventory() == null) return;
         if (e.getClickedInventory().getType() == InventoryType.PLAYER || e.getClickedInventory().getType() == InventoryType.CREATIVE){
             if (e.getSlotType() == InventoryType.SlotType.ARMOR){
                 if (ItemUtils.isEmpty(e.getCurrentItem()) && ItemUtils.isEmpty(e.getCursor())) return; // both clicked slot and cursor are empty, no need to do anything
@@ -47,7 +47,7 @@ public class ArmorSwitchListener implements Listener {
             } else if (e.getClick().isShiftClick() && !ItemUtils.isEmpty(e.getCurrentItem())){
                 ItemBuilder clicked = new ItemBuilder(e.getCurrentItem());
                 EquipmentClass type = EquipmentClass.getMatchingClass(clicked.getMeta());
-                if (!EquipmentClass.isArmor(type)) return; // clicked item isn't armor, and so it can be assumed no equipment is equipped
+                if (type == null || !type.isArmor()) return; // clicked item isn't armor, and so it can be assumed no equipment is equipped
                 ItemStack armor = switch (type){
                     case HELMET -> e.getWhoClicked().getInventory().getItem(EquipmentSlot.HEAD);
                     case CHESTPLATE -> e.getWhoClicked().getInventory().getItem(EquipmentSlot.CHEST);
@@ -63,9 +63,8 @@ public class ArmorSwitchListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDispenserEquip(BlockDispenseArmorEvent e){
-        if (e.isCancelled()) return;
         if (e.getTargetEntity() instanceof Player p){
             // armor equipped through dispenser, update equipment
             updateArmor(p);

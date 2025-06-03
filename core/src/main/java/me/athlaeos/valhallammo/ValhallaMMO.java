@@ -38,6 +38,7 @@ import me.athlaeos.valhallammo.skills.skills.SkillRegistry;
 import me.athlaeos.valhallammo.tools.BlockHardnessStick;
 import me.athlaeos.valhallammo.trading.CustomMerchantManager;
 import me.athlaeos.valhallammo.trading.listeners.MerchantListener;
+import me.athlaeos.valhallammo.trading.services.ServiceRegistry;
 import me.athlaeos.valhallammo.utility.GlobalEffect;
 import me.athlaeos.valhallammo.utility.ItemUtils;
 import me.athlaeos.valhallammo.utility.Utils;
@@ -55,6 +56,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class ValhallaMMO extends JavaPlugin {
+    private static final boolean premium = false;
     private static boolean customMiningSystem = false;
     private static boolean tradingSystemEnabled = false;
     private static NMS nms = null;
@@ -175,6 +177,7 @@ public class ValhallaMMO extends JavaPlugin {
         registerHook(new DecentHologramsHook());
         registerHook(new NexoHook());
         registerHook(new CoreProtectHook());
+        registerHook(new MythicMobsHook());
     }
 
     @Override
@@ -218,7 +221,9 @@ public class ValhallaMMO extends JavaPlugin {
         ProfilePersistence connection = ProfileRegistry.getPersistence();
 
         if (ConfigManager.getConfig("config.yml").get().getBoolean("metrics", true)){
-            new Metrics(this, 14942).addCustomChart(new Metrics.SimplePie("using_database_for_player_data", () -> connection instanceof SQL db && db.getConnection() != null ? "Yes" : "No"));
+            Metrics metrics = new Metrics(this, 14942);
+            metrics.addCustomChart(new Metrics.SimplePie("using_database_for_player_data", () -> connection instanceof SQL db && db.getConnection() != null ? "Yes" : "No"));
+            metrics.addCustomChart(new Metrics.SimplePie("premium_users", () -> premium ? "Yes" : "No"));
         }
 
         registerListener(new Dummy());
@@ -285,11 +290,15 @@ public class ValhallaMMO extends JavaPlugin {
         registerCommand(new ProfileCommand(DiggingProfile.class), "digging");
         registerCommand(new ProfileCommand(FishingProfile.class), "fishing");
         registerCommand(new ProfileCommand(MartialArtsProfile.class), "martialarts");
+        registerCommand(new ProfileCommand(TradingProfile.class), "trading");
 
         LeaderboardManager.loadFile();
         CustomRecipeRegistry.loadFiles();
         LootTableRegistry.loadFiles();
-        if (tradingSystemEnabled) CustomMerchantManager.loadAll();
+        if (tradingSystemEnabled) {
+            CustomMerchantManager.loadAll();
+            ServiceRegistry.loadFromFile(new File(ValhallaMMO.getInstance().getDataFolder(), "/trading/services.json"));
+        }
         ArmorSetRegistry.loadFromFile(new File(ValhallaMMO.getInstance().getDataFolder(), "/armor_sets.json"));
         CustomItemRegistry.loadFromFile(new File(ValhallaMMO.getInstance().getDataFolder(), "/items.json"));
         LeaderboardManager.refreshLeaderboards();
@@ -344,7 +353,10 @@ public class ValhallaMMO extends JavaPlugin {
         LootTableRegistry.saveAll();
         ArmorSetRegistry.saveArmorSets();
         CustomItemRegistry.saveItems();
-        if (tradingSystemEnabled) CustomMerchantManager.saveAll();
+        if (tradingSystemEnabled) {
+            CustomMerchantManager.saveAll();
+            ServiceRegistry.saveServices();
+        }
         GlobalEffect.saveActiveGlobalEffects();
         PartyManager.saveParties();
         JumpListener.onServerStop();
@@ -504,5 +516,9 @@ public class ValhallaMMO extends JavaPlugin {
 
     public static Paper getPaper() {
         return paper;
+    }
+
+    public static boolean isPremium() {
+        return premium;
     }
 }

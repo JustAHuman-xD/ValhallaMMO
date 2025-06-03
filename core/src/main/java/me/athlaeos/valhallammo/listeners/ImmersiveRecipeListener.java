@@ -8,6 +8,7 @@ import me.athlaeos.valhallammo.crafting.blockvalidations.ValidationRegistry;
 import me.athlaeos.valhallammo.animations.AnimationRegistry;
 import me.athlaeos.valhallammo.animations.Animation;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
 import me.athlaeos.valhallammo.crafting.recipetypes.ImmersiveCraftingRecipe;
 import me.athlaeos.valhallammo.item.ItemBuilder;
 import me.athlaeos.valhallammo.utility.Timer;
@@ -54,7 +55,7 @@ public class ImmersiveRecipeListener implements Listener {
         Player p = e.getPlayer();
         if (!Timer.isCooldownPassed(p.getUniqueId(), "delay_crafting_attempts")) return;
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) selectedImmersiveRecipe.remove(p.getUniqueId());
-        if (e.useItemInHand() == Event.Result.DENY || e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (e.useInteractedBlock() == Event.Result.DENY || e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (!CustomRecipeRegistry.getImmersiveRecipesByBlock().containsKey(ItemUtils.getBaseMaterial(clicked.getType()))) return;
         if (Timer.getTimerResult(p.getUniqueId(), "time_held_immersive_interact") == 0) Timer.startTimer(p.getUniqueId(), "time_held_immersive_interact"); // start timer if none was started yet
         if (Timer.getTimerResult(p.getUniqueId(), "time_since_immersive_interact") == 0) Timer.startTimer(p.getUniqueId(), "time_since_immersive_interact"); // start timer if none was started yet
@@ -130,9 +131,10 @@ public class ImmersiveRecipeListener implements Listener {
                 if (interactedFor >= recipe.getTimeToCraft() * 50L){
                     // finished crafting, output recipe
                     if (p.getGameMode() == GameMode.CREATIVE || ItemUtils.timesContained(Arrays.asList(p.getInventory().getStorageContents()), recipe.getIngredients(), recipe.getMetaRequirement().getChoice()) > 0){
-                        if (p.getGameMode() == GameMode.CREATIVE || ItemUtils.removeItems(p.getInventory(), recipe.getIngredients(), 1, recipe.getMetaRequirement().getChoice())){
+                        List<ItemStack> removedItems = p.getGameMode() == GameMode.CREATIVE ? new ArrayList<>() : ItemUtils.removeItems(p.getInventory(), recipe.getIngredients(), 1, recipe.getMetaRequirement().getChoice());
+                        if (removedItems != null){
                             ItemBuilder result = recipe.tinker() ? held : new ItemBuilder(recipe.getResult());
-                            DynamicItemModifier.modify(result, p, recipe.getModifiers(), false, true, true);
+                            DynamicItemModifier.modify(ModifierContext.builder(result).items(removedItems).crafter(p).executeUsageMechanics().validate().get(), recipe.getModifiers());
                             if (result == null || ItemUtils.isEmpty(result.getItem()) || CustomFlag.hasFlag(result.getMeta(), CustomFlag.UNCRAFTABLE)){
                                 Utils.sendMessage(p, ItemUtils.getPDCString(DynamicItemModifier.ERROR_MESSAGE, heldItem, ""));
                                 selectedImmersiveRecipe.remove(p.getUniqueId());

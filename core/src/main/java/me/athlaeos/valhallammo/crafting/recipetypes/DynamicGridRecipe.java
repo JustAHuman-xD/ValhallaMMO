@@ -6,6 +6,7 @@ import me.athlaeos.valhallammo.ValhallaMMO;
 import me.athlaeos.valhallammo.crafting.ToolRequirement;
 import me.athlaeos.valhallammo.crafting.ToolRequirementType;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ResultChangingModifier;
 import me.athlaeos.valhallammo.crafting.ingredientconfiguration.SlotEntry;
 import me.athlaeos.valhallammo.item.EquipmentClass;
@@ -118,7 +119,7 @@ public class DynamicGridRecipe implements ValhallaRecipe, ValhallaKeyedRecipe {
             ItemStack item = entry.getItem().clone();
             ItemMeta meta = ItemUtils.getItemMeta(item);
             TranslationManager.translateItemMeta(meta);
-            ItemUtils.setItemMeta(item, meta);
+            ItemUtils.setMetaNoClone(item, meta);
             RecipeChoice choice = entry.getOption() == null ? null : entry.getOption().getChoice(item); // if the ingredient or its choice are null, default to RecipeChoice.MaterialChoice
             if (choice == null) choice = new RecipeChoice.MaterialChoice(item.getType());
             if (i == toolIndex) choice = new RecipeChoice.MaterialChoice(ItemUtils.getNonAirMaterialsArray());
@@ -140,7 +141,7 @@ public class DynamicGridRecipe implements ValhallaRecipe, ValhallaKeyedRecipe {
             if (ItemUtils.isEmpty(i)) continue;
             ItemMeta meta = ItemUtils.getItemMeta(i);
             TranslationManager.translateItemMeta(meta);
-            ItemUtils.setItemMeta(i, meta);
+            ItemUtils.setMetaNoClone(i, meta);
             RecipeChoice choice = entry.getOption() == null ? null : entry.getOption().getChoice(i);
             if (choice == null) choice = new RecipeChoice.MaterialChoice(i.getType());
             if (items.get(toolIndex) != null && items.get(toolIndex).equals(entry)) choice = new RecipeChoice.MaterialChoice(ItemUtils.getNonAirMaterialsArray());
@@ -153,7 +154,7 @@ public class DynamicGridRecipe implements ValhallaRecipe, ValhallaKeyedRecipe {
     private ItemStack recipeBookIcon(ItemStack i){
         ResultChangingModifier changer = (ResultChangingModifier) modifiers.stream().filter(m -> m instanceof ResultChangingModifier).reduce((first, second) -> second).orElse(null);
         if (changer != null) {
-            i = Utils.thisorDefault(changer.getNewResult(null, new ItemBuilder(i)), i);
+            i = Utils.thisorDefault(changer.getNewResult(ModifierContext.builder(new ItemBuilder(i)).get()), i);
         }
         List<String> gridDetails = new ArrayList<>();
         if (shapeless){

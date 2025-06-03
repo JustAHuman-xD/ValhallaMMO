@@ -2,22 +2,23 @@ package me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.implementations.it
 
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierCategoryRegistry;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ResultChangingModifier;
 import me.athlaeos.valhallammo.item.EquipmentClass;
 import me.athlaeos.valhallammo.item.ItemAttributesRegistry;
 import me.athlaeos.valhallammo.item.ItemBuilder;
-import me.athlaeos.valhallammo.potioneffects.PotionEffectRegistry;
-import org.bukkit.command.CommandSender;
 import me.athlaeos.valhallammo.item.item_attributes.AttributeWrapper;
+import me.athlaeos.valhallammo.potioneffects.PotionEffectRegistry;
 import me.athlaeos.valhallammo.utility.ItemUtils;
 import me.athlaeos.valhallammo.utility.StringUtils;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
+import org.bukkit.command.CommandSender;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 
-public class TransformItemMaterial extends DynamicItemModifier {
+public class TransformItemMaterial extends DynamicItemModifier implements ResultChangingModifier {
     private static final Map<String, Map<EquipmentClass, Material>> classToMaterialMapping = new HashMap<>();
     private final Material icon;
     private final String materialPrefix;
@@ -46,18 +47,18 @@ public class TransformItemMaterial extends DynamicItemModifier {
     }
 
     @Override
-    public void processItem(Player crafter, ItemBuilder outputItem, boolean use, boolean validate, int timesExecuted) {
-        EquipmentClass equipmentClass = EquipmentClass.getMatchingClass(outputItem.getMeta());
+    public void processItem(ModifierContext context) {
+        EquipmentClass equipmentClass = EquipmentClass.getMatchingClass(context.getItem().getMeta());
         if (equipmentClass == null) return;
         Material transformTo = classToMaterialMapping.getOrDefault(materialPrefix, new HashMap<>()).get(equipmentClass);
         if (transformTo == null) return;
 
-        outputItem.type(transformTo);
+        context.getItem().type(transformTo);
         for (AttributeWrapper wrapper : ItemAttributesRegistry.getVanillaStats(transformTo).values()){
             // The item's vanilla stats are updated to their vanilla values, any added custom attributes are left alone
-            ItemAttributesRegistry.addDefaultStat(outputItem.getMeta(), wrapper.copy());
+            ItemAttributesRegistry.addDefaultStat(context.getItem().getMeta(), wrapper.copy());
         }
-        PotionEffectRegistry.updateEffectLore(outputItem.getMeta());
+        PotionEffectRegistry.updateEffectLore(context.getItem().getMeta());
     }
 
     @Override
@@ -113,5 +114,16 @@ public class TransformItemMaterial extends DynamicItemModifier {
     @Override
     public int commandArgsRequired() {
         return 0;
+    }
+
+    @Override
+    public ItemStack getNewResult(ModifierContext context) {
+        EquipmentClass equipmentClass = EquipmentClass.getMatchingClass(context.getItem().getMeta());
+        if (equipmentClass == null) return context.getItem().get();
+        Material transformTo = classToMaterialMapping.getOrDefault(materialPrefix, new HashMap<>()).get(equipmentClass);
+        if (transformTo == null) return context.getItem().get();
+
+        context.getItem().type(transformTo);
+        return context.getItem().get();
     }
 }

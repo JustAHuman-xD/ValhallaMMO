@@ -5,6 +5,7 @@ import me.athlaeos.valhallammo.crafting.CustomRecipeRegistry;
 import me.athlaeos.valhallammo.crafting.blockvalidations.Validation;
 import me.athlaeos.valhallammo.crafting.blockvalidations.ValidationRegistry;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.DynamicItemModifier;
+import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ModifierContext;
 import me.athlaeos.valhallammo.crafting.dynamicitemmodifiers.ResultChangingModifier;
 import me.athlaeos.valhallammo.crafting.recipetypes.ImmersiveCraftingRecipe;
 import me.athlaeos.valhallammo.dom.Comparator;
@@ -268,8 +269,8 @@ public class ImmersiveRecipeSelectionMenu extends Menu {
                                 hand :
                                 recipe.getTinkerInput().getItem()) :
                         recipe.getResult()).clone();
-                ResultChangingModifier changingModifier = (ResultChangingModifier) recipe.getModifiers().stream().filter(m -> m instanceof ResultChangingModifier r).findFirst().orElse(null);
-                if (changingModifier != null) button = changingModifier.getNewResult(playerMenuUtility.getOwner(), new ItemBuilder(button));
+                ResultChangingModifier changingModifier = (ResultChangingModifier) recipe.getModifiers().stream().filter(m -> m instanceof ResultChangingModifier).findFirst().orElse(null);
+                if (changingModifier != null) button = changingModifier.getNewResult(ModifierContext.builder(new ItemBuilder(button)).crafter(playerMenuUtility.getOwner()).get());
                 List<String> lore = new ArrayList<>(recipe.getDescription() == null ?
                         defaultFormat :
                         Arrays.asList(recipe.getDescription().split("/n"))
@@ -315,7 +316,7 @@ public class ImmersiveRecipeSelectionMenu extends Menu {
             }
         }
         ItemBuilder result = new ItemBuilder(button);
-        DynamicItemModifier.modify(result, playerMenuUtility.getOwner(), selectedRecipe.getModifiers(), false, false, true);
+        DynamicItemModifier.modify(ModifierContext.builder(result).crafter(playerMenuUtility.getOwner()).validate().get(), selectedRecipe.getModifiers());
         if (ItemUtils.isEmpty(result.getItem())) return null;
         return result.stringTag(BUTTON_RECIPE_KEY, selectedRecipe.getName());
     }

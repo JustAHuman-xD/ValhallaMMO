@@ -5,6 +5,7 @@ import me.athlaeos.valhallammo.dom.Weighted;
 import me.athlaeos.valhallammo.item.ItemBuilder;
 import me.athlaeos.valhallammo.loot.LootTable;
 import me.athlaeos.valhallammo.loot.predicates.LootPredicate;
+import me.athlaeos.valhallammo.playerstats.AccumulativeStatManager;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -41,6 +42,11 @@ public class MerchantTrade implements Weighted {
     private boolean fixedUseCount = false; // if true, the maxUses property may be scaled by the player's "TRADE_USE_MULTIPLIER" stat
     private boolean exclusive = false; // if true, the player must have this trade in their "exclusive trades" list in their TradingProfile to be able to access this trade
     private long restockDelay = 0; // allowed delay between restocking. A trade will not restock if the duration has not passed, even if the villager tries to.
+    private float giftWeight = -1; // if positive, this trade may be gifted indefinitely. if 0, it may not be gifted. If negative, the weight is instead treated as a positive value, but the trade may only be gifted once per player
+    private boolean refreshes = false; // (only works with daily restocks disabled) if enabled, the trade remains the same but modifiers are re-applied per day
+    private double skillExp = 100; // the amount of trading skill exp granted when traded
+    private boolean isTradeable = true; // if false, this item is only available as a gift
+    private int maxOrderCount = 0; // max times this may be ordered. if 0, this trade cannot be ordered
 
     public MerchantTrade(String id){
         this.id = id;
@@ -77,6 +83,11 @@ public class MerchantTrade implements Weighted {
     public long getRestockDelay() { return restockDelay; }
     public int getPriceRandomNegativeOffset() { return priceRandomNegativeOffset; }
     public int getPriceRandomPositiveOffset() { return priceRandomPositiveOffset; }
+    public float getGiftWeight() { return giftWeight; }
+    public boolean refreshes() { return refreshes; }
+    public double getSkillExp() { return skillExp; }
+    public boolean isTradeable() { return isTradeable; }
+    public int getMaxOrderCount() { return maxOrderCount; }
 
     public void setFixedUseCount(boolean fixedUseCount) { this.fixedUseCount = fixedUseCount; }
     public void setResult(ItemStack result) { this.result = result; }
@@ -105,13 +116,18 @@ public class MerchantTrade implements Weighted {
     public void setRestockDelay(long delay) { this.restockDelay = delay; }
     public void setPriceRandomNegativeOffset(int priceRandomNegativeOffset) { this.priceRandomNegativeOffset = priceRandomNegativeOffset; }
     public void setPriceRandomPositiveOffset(int priceRandomPositiveOffset) { this.priceRandomPositiveOffset = priceRandomPositiveOffset; }
+    public void setGiftWeight(float giftWeight) { this.giftWeight = giftWeight; }
+    public void setRefreshes(boolean refreshes) { this.refreshes = refreshes; }
+    public void setSkillExp(double skillExp) { this.skillExp = skillExp; }
+    public void setTradeable(boolean tradeable) { isTradeable = tradeable; }
+    public void setMaxOrderCount(int maxOrderCount) { this.maxOrderCount = maxOrderCount; }
 
     public float getPerTradeWeight(Player player, MerchantData.TradeData tradeData){
         if (!fixedUseCount){
             float perTradeWeight = 1;
-            double expectedMaxTrades = maxUses * (1); // TODO + AccumulativeStatManager.getCachedStats("TRADING_USES_MULTIPLIER", player, 10000, true);
+            double expectedMaxTrades = maxUses * (1 + AccumulativeStatManager.getCachedStats("TRADING_USES_MULTIPLIER", player, 10000, true));
             expectedMaxTrades += Math.min(demandMaxUsesMaxQuantity, tradeData.getDemand() * demandMaxUsesMaxQuantity);
-            expectedMaxTrades += 0; // TODO AccumulativeStatManager.getCachedStats("TRADING_USES_BONUS", player, 10000, true);
+            expectedMaxTrades += AccumulativeStatManager.getCachedStats("TRADING_USES_BONUS", player, 10000, true);
             if (expectedMaxTrades <= 0) perTradeWeight = Integer.MAX_VALUE;
             else perTradeWeight = (float) (maxUses / expectedMaxTrades);
             return perTradeWeight;
